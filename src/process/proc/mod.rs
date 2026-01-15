@@ -497,6 +497,12 @@ impl Proc {
     /// - 该函数应在内核上下文且进程排他访问时调用，避免数据竞争。
     /// - 系统调用执行过程中可能包含更底层的 `unsafe`，调用此函数时需确保整体安全环境。
     pub fn syscall(&mut self) {
+        let syscall_names = [
+            "", "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup",
+            "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir",
+            "close", "trace"
+        ];
+
         sstatus::intr_on();
 
         let tf = unsafe { self.data.get_mut().tf.as_mut().unwrap() };
@@ -543,12 +549,7 @@ impl Proc {
         let trace_mask = self.excl.lock().trace_mask;
         if (trace_mask >> a7) & 1 != 0 {
             let pid = self.excl.lock().pid;
-            let syscall_names = [
-                "", "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup",
-                "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir",
-                "close", "trace"
-            ];
-            let syscall_name = if a7 < SYSCALL_NAMES.len() { SYSCALL_NAMES[a7] } else { "unknown" };
+            let syscall_name = if a7 < syscall_names.len() { syscall_names[a7] } else { "unknown" };
             println!("{}: syscall {} -> {}", pid, syscall_name, ret_val as isize);
         }
     }

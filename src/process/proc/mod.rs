@@ -59,6 +59,8 @@ pub struct ProcExcl {
     pub channel: usize,
     /// 进程的唯一标识符（进程ID）。
     pub pid: usize,
+    /// 进程的系统调用跟踪掩码，用于控制跟踪哪些系统调用。
+    pub trace_mask: i32,
 }
 
 
@@ -69,6 +71,7 @@ impl ProcExcl {
             exit_status: 0,
             channel: 0,
             pid: 0,
+            trace_mask: 0,
         }
     }
 
@@ -78,6 +81,7 @@ impl ProcExcl {
         self.channel = 0;
         self.exit_status = 0;
         self.state = ProcState::UNUSED;
+        self.trace_mask = 0;
     }
 }
 
@@ -383,6 +387,12 @@ pub struct Proc {
     pub killed: AtomicBool,
 }
 
+static SYSCALL_NAMES: [&str; 23] = [
+    "", "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup",
+    "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir",
+    "close", "trace"
+];
+
 impl Proc {
     pub const fn new(index: usize) -> Self {
         Self {
@@ -520,6 +530,7 @@ impl Proc {
             19 => self.sys_link(),
             20 => self.sys_mkdir(),
             21 => self.sys_close(),
+            22 => self.sys_trace(),
             _ => {
                 panic!("unknown syscall num: {}", a7);
             }
@@ -528,6 +539,14 @@ impl Proc {
             Ok(ret) => ret,
             Err(()) => -1isize as usize,
         };
+
+        // 打印系统调用跟踪信息
+        let trace_mask = self.excl.lock().trace_mask;
+        if (trace_mask >> a7) & 1 != 0 {
+            let pid = self.excl.lock().pid;
+            let syscall_name = if a7 < SYSCALL_NAMES.len() { SYSCALL_NAMES[a7] } else { "unknown" };
+            println!("{}: syscall {} -> {}", pid, syscall_name, ret_val as isize);
+        }
     }
 
     /// # 功能说明
@@ -690,6 +709,8 @@ impl Proc {
         
         // copy process name
         cdata.name.copy_from_slice(&pdata.name);
+
+        cexcl.trace_mask = self.excl.lock().trace_mask;
 
         let cpid = cexcl.pid;
 

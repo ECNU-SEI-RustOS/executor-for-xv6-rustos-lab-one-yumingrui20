@@ -529,10 +529,15 @@ impl Proc {
                 panic!("unknown syscall num: {}", a7);
             }
         };
-        tf.a0 = match sys_result {
+        // tf.a0 = match sys_result {
+        //     Ok(ret) => ret,
+        //     Err(()) => -1isize as usize,
+        // };
+        let ret_val = match sys_result {
             Ok(ret) => ret,
             Err(()) => -1isize as usize,
         };
+        tf.a0 = ret_val;
 
         // 打印系统调用跟踪信息
         let trace_mask = self.excl.lock().trace_mask;

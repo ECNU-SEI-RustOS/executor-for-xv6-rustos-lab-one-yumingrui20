@@ -387,12 +387,6 @@ pub struct Proc {
     pub killed: AtomicBool,
 }
 
-static SYSCALL_NAMES: [&str; 23] = [
-    "", "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup",
-    "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir",
-    "close", "trace"
-];
-
 impl Proc {
     pub const fn new(index: usize) -> Self {
         Self {
@@ -544,6 +538,11 @@ impl Proc {
         let trace_mask = self.excl.lock().trace_mask;
         if (trace_mask >> a7) & 1 != 0 {
             let pid = self.excl.lock().pid;
+            let syscall_names = [
+                "", "fork", "exit", "wait", "pipe", "read", "kill", "exec", "fstat", "chdir", "dup",
+                "getpid", "sbrk", "sleep", "uptime", "open", "write", "mknod", "unlink", "link", "mkdir",
+                "close", "trace"
+            ];
             let syscall_name = if a7 < SYSCALL_NAMES.len() { SYSCALL_NAMES[a7] } else { "unknown" };
             println!("{}: syscall {} -> {}", pid, syscall_name, ret_val as isize);
         }
@@ -710,6 +709,7 @@ impl Proc {
         // copy process name
         cdata.name.copy_from_slice(&pdata.name);
 
+        // 复制 trace mask
         cexcl.trace_mask = self.excl.lock().trace_mask;
 
         let cpid = cexcl.pid;

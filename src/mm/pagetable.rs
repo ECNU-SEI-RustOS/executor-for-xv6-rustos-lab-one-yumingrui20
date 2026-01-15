@@ -924,20 +924,20 @@ impl PageTable {
 
     // 递归辅助函数
     fn vm_print_level(&self, level: usize) {
+        //迭代所有页表项
         for (i, pte) in self.data.iter().enumerate() {
-            // 只打印有效的页表项
             if pte.is_valid() {
-                // 打印缩进表示页表层级
-                for _ in 0..=level {
+                //缩进表示层级
+                for j in 0..=level {
                     print!("..");
-                    if _ < level {
+                    if j < level {
                         print!(" ");
                     }
                 }
-                // 计算并打印物理地址
+                //打印页表项信息
                 let pa = pte.as_phys_addr();
                 println!("{}: pte {:#x} pa {:#x}", i, pte.data, pa.as_usize());
-                // 递归打印子页表
+
                 if !pte.is_leaf() {
                     let child_pt_ptr = pte.as_page_table();
                     let child_pt = unsafe { &*child_pt_ptr };
